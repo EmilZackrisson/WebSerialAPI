@@ -7,8 +7,10 @@
     <title>WebSerial</title>
 </head>
 <body>
-    <button id="button">Serial</button>
-    <button id="ledOn" onclick="ledOn()">LED On</button>
+    <button id="button" onclick="connect()">Serial</button>
+    <button id="ledOn" disabled>LED On</button>
+    <button id="ledOff" disabled>LED Off</button>
+    <p id="serialOutput"></p>
     <script src="index.js"></script>
 </body>
 </html>

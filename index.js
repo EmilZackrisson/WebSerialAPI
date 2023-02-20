@@ -2,58 +2,69 @@ if ("serial" in navigator) {
   console.log("Serial is supported");
 }
 
-// Filter on devices with the Arduino Uno USB Vendor/Product IDs.
+// Filter on devices with the Arduino Mega USB Vendor/Product IDs.
 const filters = [{ usbVendorId: 6790, usbProductId: 29987 }];
 
-let port;
+const serialOutput = document.getElementById("serialOutput");
 
-document.querySelector("button").addEventListener("click", async () => {
-  // Prompt user to select any serial port.
+var lineBuffer = "";
+
+async function connect() {
   port = await navigator.serial.requestPort({ filters });
-  console.log("🚀 ~ file: Serial.js:8 ~ document.querySelector ~ port", port);
-  //   const { usbProductId, usbVendorId } = port.getInfo();
-
   await port.open({ baudRate: 115200 });
 
+  document.getElementById("ledOn").disabled = false;
+  document.getElementById("ledOff").disabled = false;
+
+  var enc = new TextEncoder();
+
+  ledOn.addEventListener("click", (event) => {
+    console.log(event);
+    if (port && port.writable) {
+      // Convert the string to an ArrayBuffer.
+      const value = "set,13,1";
+      const bytes = new Uint8Array(enc.encode(value));
+
+      const writer = port.writable.getWriter();
+
+      writer.write(bytes);
+      writer.releaseLock();
+    }
+  });
+
+  ledOff.addEventListener("click", (event) => {
+    if (port && port.writable) {
+      // Convert the string to an ArrayBuffer.
+      const value = "set,13,0";
+      const bytes = new Uint8Array(enc.encode(value));
+
+      const writer = port.writable.getWriter();
+
+      writer.write(bytes);
+      writer.releaseLock();
+    }
+  });
+
   const reader = port.readable.getReader();
-  const textDecoder = new TextDecoderStream();
-  //   const readableStreamClosed = port.readable.pipeTo(textDecoder.writable);
 
   // Listen to data coming from the serial device.
-  while (port.readable) {
-    try {
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) {
-          // |reader| has been canceled.
-          break;
-        }
-        // Do something with |value|...
-        console.log(value);
-        console.log(decode(value));
-      }
-    } catch (error) {
-      // Handle |error|...
-      console.log(error);
-    } finally {
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) {
+      // Allow the serial port to be closed later.
       reader.releaseLock();
+      break;
+    }
+    // value is a Uint8Array.
+    if (value.length === 1) {
+      lineBuffer += String.fromCharCode(value[0]);
+      console.log("🚀 ~ file: index.js:61 ~ connect ~ lineBuffer", lineBuffer);
+    } else {
+      lineBuffer += new TextDecoder().decode(value);
+      let text = lineBuffer;
+      lineBuffer = "";
+      console.log("Uint8Array: ", value);
+      console.log("TextDecoder: ", text);
     }
   }
-});
-
-function decode(Uint8Array) {
-  var encodedString = String.fromCharCode.apply(null, Uint8Array),
-    decodedString = decodeURIComponent(encodedString);
-  return decodedString;
-}
-
-async function ledOn() {
-  const textEncoder = new TextEncoderStream();
-  const writableStreamClosed = textEncoder.readable.pipeTo(port.writable);
-
-  const writer = textEncoder.writable.getWriter();
-
-  await writer.write("hello").then(() => {
-    writer.releaseLock();
-  });
 }
